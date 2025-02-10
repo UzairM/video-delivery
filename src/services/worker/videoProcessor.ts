@@ -89,6 +89,12 @@ export class VideoProcessor {
   private async transcodeVariant(inputPath: string, options: TranscodeOptions): Promise<void> {
     return new Promise((resolve, reject) => {
       ffmpeg(inputPath)
+        .on('start', (commandLine) => {
+          console.log('FFmpeg command:', commandLine);
+        })
+        .on('stderr', (stderrLine) => {
+          console.log('FFmpeg stderr:', stderrLine);
+        })
         .outputOptions([
           `-vf scale=${options.resolution}`,
           '-c:v libx264',
@@ -102,11 +108,10 @@ export class VideoProcessor {
           '-f hls',
           '-hls_time 1',
           '-hls_list_size 5',
-          '-hls_flags independent_segments+program_date_time+low_latency',
+          '-hls_flags independent_segments',
           '-hls_segment_type fmp4',
           '-hls_fmp4_init_filename init.mp4',
           '-hls_segment_filename', path.join(options.outputPath, 'segment%d.fmp4'),
-          '-strict experimental',
           '-tune zerolatency',
           '-g 30',
           '-sc_threshold 0',
@@ -125,6 +130,25 @@ export class VideoProcessor {
     const thumbnailPath = path.join(tempDir, `${videoId}.jpg`);
 
     try {
+      // Check if input file exists and is readable
+      if (!fs.existsSync(inputPath)) {
+        throw new Error(`Input file not found: ${inputPath}`);
+      }
+      
+      try {
+        await fs.promises.access(inputPath, fs.constants.R_OK);
+      } catch (e) {
+        throw new Error(`Input file not readable: ${inputPath}`);
+      }
+      
+      // Log file info
+      const stats = await fs.promises.stat(inputPath);
+      console.log('Input file:', {
+        path: inputPath,
+        size: stats.size,
+        permissions: stats.mode
+      });
+
       videoStore.set(videoId, { status: 'processing' });
 
       // Create temp directories
