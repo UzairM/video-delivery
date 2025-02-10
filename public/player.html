@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body { 
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: system-ui;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        .player-wrapper {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            background: #000;
+        }
+        #video-player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .video-info {
+            color: white;
+            padding: 1rem 0;
+        }
+        .back-button {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #2196f3;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        .back-button:hover {
+            background: #1976d2;
+        }
+        .stats {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-family: monospace;
+        }
+        .quality-selector {
+            margin: 1rem 0;
+            padding: 0.5rem;
+            background: #333;
+            border: none;
+            color: white;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/videos.html" class="back-button">← Back to Dashboard</a>
+        <div class="player-wrapper">
+            <video id="video-player" controls></video>
+        </div>
+        <div class="video-info">
+            <h1 id="video-title">Loading...</h1>
+            <select id="quality-selector" class="quality-selector">
+                <option value="auto">Auto</option>
+            </select>
+            <div id="video-description"></div>
+        </div>
+        <div id="stats" class="stats"></div>
+    </div>
+
+    <script>
+        const API_DOMAIN = document.querySelector('meta[name="api-domain"]').content;
+        const API_URL = `${API_DOMAIN}/api`;
+        
+        // Get video ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoId = urlParams.get('id');
+
+        if (!videoId) {
+            window.location.href = '/videos.html';
+        }
+
+        const video = document.getElementById('video-player');
+        const qualitySelector = document.getElementById('quality-selector');
+        const statsDiv = document.getElementById('stats');
+        let hls;
+
+        async function loadVideo() {
+            try {
+                // Fetch video details
+                const response = await fetch(`${API_URL}/videos/${videoId}/status`);
+                const data = await response.json();
+
+                if (data.status !== 'ready') {
+                    throw new Error(`Video is ${data.status}`);
+                }
+
+                // Update page info
+                document.title = data.title || 'Video Player';
+                document.getElementById('video-title').textContent = data.title || 'Untitled';
+                document.getElementById('video-description').textContent = data.description || '';
+
+                // Initialize HLS
+                if (Hls.isSupported()) {
+                    hls = new Hls({
+                        debug: false,
+                        startLevel: -1, // Auto quality
+                        enableWorker: true,
+                        lowLatencyMode: true,
+                        backBufferLength: 90,
+                        maxBufferLength: 30,
+                        maxMaxBufferLength: 600,
+                        maxBufferSize: 60 * 1000 * 1000, // 60MB
+                    });
+
+                    hls.loadSource(data.url);
+                    hls.attachMedia(video);
+
+                    // Handle quality selection
+                    hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                        const qualities = data.levels.map((level, index) => ({
+                            index,
+                            height: level.height,
+                            bitrate: level.bitrate
+                        }));
+
+                        // Populate quality selector
+                        qualities.forEach(quality => {
+                            const option = document.createElement('option');
+                            option.value = quality.index;
+                            option.text = `${quality.height}p (${Math.round(quality.bitrate/1000)} kbps)`;
+                            qualitySelector.appendChild(option);
+                        });
+                    });
+
+                    // Update stats
+                    setInterval(() => {
+                        if (!hls) return;
+                        const stats = {
+                            buffered: video.buffered.length ? video.buffered.end(0) - video.currentTime : 0,
+                            latency: hls.latency || 0,
+                            dropped: hls.droppedFrames || 0,
+                            bitrate: (hls.bandwidthEstimate / 1000).toFixed(0),
+                            level: hls.currentLevel
+                        };
+                        statsDiv.textContent = JSON.stringify(stats, null, 2);
+                    }, 1000);
+
+                    // Start playback
+                    video.play().catch(console.error);
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Fallback to native HLS for Safari
+                    video.src = data.url;
+                    qualitySelector.style.display = 'none';
+                    statsDiv.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error loading video:', error);
+                alert('Error loading video: ' + error.message);
+            }
+        }
+
+        // Handle quality selection
+        qualitySelector.addEventListener('change', (e) => {
+            if (!hls) return;
+            const level = parseInt(e.target.value);
+            hls.currentLevel = level; // -1 for auto
+        });
+
+        // Load video
+        loadVideo();
+    </script>
+</body>
+</html> 

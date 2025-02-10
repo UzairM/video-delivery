@@ -73,7 +73,7 @@ export class VideoProcessor {
   private generateMasterPlaylist(variants: TranscodeOptions[]): string {
     let playlist = '#EXTM3U\n';
     playlist += '#EXT-X-VERSION:7\n';
-    playlist += '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.1\n';
+    playlist += '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.1,CAN-SKIP-UNTIL=12.0\n';
     playlist += '#EXT-X-INDEPENDENT-SEGMENTS\n\n';
 
     variants.forEach(variant => {
@@ -108,14 +108,17 @@ export class VideoProcessor {
           '-f hls',
           '-hls_time 1',
           '-hls_list_size 5',
-          '-hls_flags independent_segments',
+          '-hls_flags independent_segments+program_date_time',
           '-hls_segment_type fmp4',
           '-hls_fmp4_init_filename init.mp4',
           '-hls_segment_filename', path.join(options.outputPath, 'segment%d.fmp4'),
           '-tune zerolatency',
           '-g 30',
           '-sc_threshold 0',
-          '-preset ultrafast'
+          '-preset ultrafast',
+          '-movflags frag_keyframe+empty_moov+default_base_moof',
+          '-write_prft 1',
+          '-video_track_timescale 90000'
         ])
         .output(path.join(options.outputPath, 'playlist.m3u8'))
         .on('end', () => resolve())

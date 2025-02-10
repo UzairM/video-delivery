@@ -244,7 +244,7 @@
                         </div>
                         ${video.description ? `<p>${video.description}</p>` : ''}
                         ${video.error ? `<div class="error">Error: ${video.error}</div>` : ''}
-                        ${video.url ? `<div><a href="${video.url}" target="_blank">View Video</a></div>` : ''}
+                        ${video.url ? `<div><a href="/player.html?id=${video.id}" target="_blank">View Video</a></div>` : ''}
                     `;
                     
                     card.innerHTML = content;
