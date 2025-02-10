@@ -9,7 +9,16 @@ A microservice for handling video uploads, processing, and streaming. This servi
 
 ## Features
 
-- Supports MP4 and MOV video formats
+- Supports multiple video formats:
+  - MP4 (.mp4, .m4v)
+  - MOV (.mov) 
+  - AVI (.avi)
+  - MKV (.mkv)
+  - WebM (.webm)
+  - WMV (.wmv)
+  - FLV (.flv)
+  - 3GP (.3gp)
+  - MPEG (.mpeg, .mpg)
 - Generates HLS streams in multiple qualities (240p to 1080p)
 - Automatic thumbnail generation
 - Progress tracking and status updates
@@ -17,12 +26,11 @@ A microservice for handling video uploads, processing, and streaming. This servi
 - In-memory video status tracking
 
 ## Prerequisites
-- Setup S3 bucket with cloudfront distribution: 
+- AWS account with S3 and CloudFront set up: 
   - https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/GettingStarted.SimpleDistribution.html
   - get the cloudfront domain name and IAM Access Key ID and Secret Access Key
-  - Node.js 18+
+- Node.js 18+
 - FFmpeg installed on the system
-- AWS account with S3 and CloudFront set up
 - Docker and Docker Compose (optional)
 
 ## Environment Variables
@@ -39,7 +47,7 @@ CLOUDFRONT_DOMAIN=your_cloudfront_domain
 
 # Processing
 MAX_FILE_SIZE=104857600 # 100MB in bytes
-ALLOWED_VIDEO_TYPES=video/mp4,video/quicktime
+ALLOWED_VIDEO_TYPES="all" or any of the following: video/mp4,video/quicktime,video/avi,video/mkv,video/webm,video/wmv,video/flv,video/3gp,video/mpeg
 ```
 
 ## Quick Start with Docker
