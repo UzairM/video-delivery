@@ -13,6 +13,10 @@ export interface StorageService {
     key: string
   ): Promise<{ url: string }>;
   
+  uploadBatch(
+    files: Array<{file: UploadedFile; key: string}>
+  ): Promise<Array<{ key: string; url: string }>>;
+  
   downloadFile(key: string): Promise<Buffer>;
   
   deleteFile(key: string): Promise<void>;

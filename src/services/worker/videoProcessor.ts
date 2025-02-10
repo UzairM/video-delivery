@@ -1,5 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg';
-import { StorageService } from '../storage/types';
+import { StorageService, UploadedFile } from '../storage/types';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
@@ -72,11 +72,14 @@ export class VideoProcessor {
 
   private generateMasterPlaylist(variants: TranscodeOptions[]): string {
     let playlist = '#EXTM3U\n';
-    playlist += '#EXT-X-VERSION:3\n\n';
+    playlist += '#EXT-X-VERSION:7\n';
+    playlist += '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.6\n';
+    playlist += '#EXT-X-INDEPENDENT-SEGMENTS\n\n';
 
     variants.forEach(variant => {
       const [width, height] = variant.resolution.split('x');
-      playlist += `#EXT-X-STREAM-INF:BANDWIDTH=${parseInt(variant.bitrate) * 1000},RESOLUTION=${variant.resolution}\n`;
+      const bandwidthBits = parseInt(variant.bitrate) * 1000;
+      playlist += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthBits},RESOLUTION=${variant.resolution},CODECS="avc1.640029,mp4a.40.2"\n`;
       playlist += `${variant.resolution.split('x')[1]}p/playlist.m3u8\n`;
     });
 
@@ -97,10 +100,17 @@ export class VideoProcessor {
           '-b:a 128k',
           '-ac 2',
           '-f hls',
-          '-hls_time 6',
+          '-hls_time 2',
           '-hls_list_size 0',
-          '-hls_segment_filename', path.join(options.outputPath, 'segment%d.ts'),
-          '-hls_playlist_type vod'
+          '-hls_segment_type fmp4',
+          '-hls_flags low_latency',
+          '-hls_part_time 0.3',
+          '-hls_delete_threshold 1',
+          '-method PUT',
+          '-http_persistent 1',
+          '-hls_segment_filename', path.join(options.outputPath, 'segment%d.fmp4'),
+          '-hls_fmp4_init_filename', 'init.mp4',
+          '-hls_playlist_type event'
         ])
         .output(path.join(options.outputPath, 'playlist.m3u8'))
         .on('end', () => resolve())
@@ -247,13 +257,12 @@ export class VideoProcessor {
   }
 
   private async uploadHLSFiles(videoDir: string, videoId: string): Promise<Array<{ key: string; url: string }>> {
-    const uploadedFiles: Array<{ key: string; url: string }> = [];
+    const files: Array<{file: UploadedFile; key: string}> = [];
     const baseKey = `videos/${videoId}`;
 
-    const uploadFile = async (localPath: string, relativePath: string) => {
-      const key = `${baseKey}/${relativePath}`;
-      const { url } = await this.storage.uploadFile(
-        {
+    const prepareFile = async (localPath: string, relativePath: string) => {
+      files.push({
+        file: {
           fieldname: 'video',
           originalname: path.basename(localPath),
           encoding: '7bit',
@@ -261,42 +270,44 @@ export class VideoProcessor {
           buffer: await fs.promises.readFile(localPath),
           size: (await fs.promises.stat(localPath)).size,
         },
-        key
-      );
-      uploadedFiles.push({ key, url });
+        key: `${baseKey}/${relativePath}`
+      });
     };
 
-    // Upload master playlist
-    await uploadFile(
+    // Prepare master playlist
+    await prepareFile(
       path.join(videoDir, 'master.m3u8'),
       'master.m3u8'
     );
 
-    // Upload variant playlists and segments
+    // Prepare variant files
     const variants = ['1080p', '720p', '480p', '360p', '240p'];
     for (const variant of variants) {
       const variantDir = path.join(videoDir, variant);
       if (!fs.existsSync(variantDir)) continue;
 
-      const files = fs.readdirSync(variantDir);
-      for (const file of files) {
-        await uploadFile(
+      const variantFiles = fs.readdirSync(variantDir);
+      for (const file of variantFiles) {
+        await prepareFile(
           path.join(variantDir, file),
           `${variant}/${file}`
         );
       }
     }
 
-    return uploadedFiles;
+    // Batch upload all files
+    return this.storage.uploadBatch(files);
   }
 
   private getMimeType(filePath: string): string {
     const ext = path.extname(filePath).toLowerCase();
     switch (ext) {
       case '.m3u8':
-        return 'application/x-mpegURL';
-      case '.ts':
-        return 'video/MP2T';
+        return 'application/vnd.apple.mpegurl';
+      case '.fmp4':
+        return 'video/mp4';
+      case '.mp4':
+        return 'video/mp4';
       default:
         return 'application/octet-stream';
     }

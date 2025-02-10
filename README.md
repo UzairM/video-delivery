@@ -19,7 +19,11 @@ A microservice for handling video uploads, processing, and streaming. This servi
   - FLV (.flv)
   - 3GP (.3gp)
   - MPEG (.mpeg, .mpg)
-- Generates HLS streams in multiple qualities (240p to 1080p)
+- Low-Latency HLS streaming (LL-HLS)
+  - 2-3 second latency
+  - Partial segment delivery
+  - HTTP/2 PUSH support
+- Multiple quality variants (240p to 1080p)
 - Automatic thumbnail generation
 - Progress tracking and status updates
 - CloudFront CDN integration for fast video delivery

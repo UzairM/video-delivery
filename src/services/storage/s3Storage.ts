@@ -3,6 +3,12 @@ import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, Head
 import { Readable } from 'stream';
 import { StorageService, StorageConfig, UploadedFile } from './types';
 
+interface UploadOptions {
+  cacheControl?: string;
+  contentType?: string;
+  acl?: string;
+}
+
 export class S3StorageService implements StorageService {
   private s3Client: S3Client;
   private bucket: string;
@@ -22,13 +28,48 @@ export class S3StorageService implements StorageService {
     this.cloudFrontDomain = config.cloudFrontDomain;
   }
 
+  private getUploadOptions(key: string): UploadOptions {
+    if (key.endsWith('.m3u8')) {
+      return {
+        cacheControl: 'no-cache, no-store, must-revalidate',
+        contentType: 'application/vnd.apple.mpegurl',
+        acl: 'public-read'
+      };
+    }
+    
+    if (key.endsWith('.fmp4') || key.endsWith('init.mp4')) {
+      return {
+        cacheControl: 'public, max-age=31536000', // Cache segments for 1 year
+        contentType: 'video/mp4',
+        acl: 'public-read'
+      };
+    }
+
+    return {
+      cacheControl: 'public, max-age=3600', // Default 1 hour cache
+      acl: 'public-read'
+    };
+  }
+
   async uploadFile(file: UploadedFile, key: string): Promise<{ url: string }> {
     try {
+      const options = this.getUploadOptions(key);
+      
       await this.s3Client.send(new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
         Body: file.buffer,
-        ContentType: file.mimetype,
+        ContentType: options.contentType || file.mimetype,
+        CacheControl: options.cacheControl,
+        ACL: options.acl,
+        // Enable HTTP/2 PUSH hints
+        Metadata: {
+          'x-amz-mp-parts-count': key.endsWith('.m3u8') ? '1' : undefined,
+          'x-amz-mp-parts': key.endsWith('.m3u8') ? JSON.stringify([
+            { path: key.replace('playlist.m3u8', 'init.mp4') },
+            { path: key.replace('playlist.m3u8', 'segment0.fmp4') }
+          ]) : undefined
+        }
       }));
 
       return { url: this.getCloudFrontUrl(key) };
@@ -92,5 +133,15 @@ export class S3StorageService implements StorageService {
 
   getCloudFrontUrl(key: string): string {
     return `https://${this.cloudFrontDomain}/${key}`;
+  }
+
+  async uploadBatch(files: Array<{file: UploadedFile; key: string}>): Promise<Array<{ key: string; url: string }>> {
+    // Batch upload for better performance with many small segments
+    return Promise.all(
+      files.map(async ({file, key}) => {
+        const result = await this.uploadFile(file, key);
+        return { key, url: result.url };
+      })
+    );
   }
 } 
