@@ -238,7 +238,7 @@
                         }
                         <h3>${video.title || 'Untitled'}</h3>
                         <div class="meta">
-                            <div>Uploaded: ${formatDate(video.timestamp)}</div>
+                            <div>Uploaded: ${video.timestamp ? formatDate(video.timestamp) : 'Just now'}</div>
                             ${video.duration ? `<div>Duration: ${formatDuration(video.duration)}</div>` : ''}
                             ${video.width ? `<div>Resolution: ${formatResolution(video.width, video.height)}</div>` : ''}
                         </div>

@@ -13,6 +13,8 @@ interface VideoMetadata {
   duration: number;
   width: number;
   height: number;
+  title?: string;
+  description?: string;
 }
 
 interface TranscodeOptions {
@@ -152,7 +154,10 @@ export class VideoProcessor {
         permissions: stats.mode
       });
 
-      videoStore.set(videoId, { status: 'processing' });
+      videoStore.set(videoId, { 
+        status: 'processing',
+        timestamp: new Date().toISOString()
+      });
 
       // Create temp directories
       if (!fs.existsSync(tempDir)) {
@@ -258,7 +263,10 @@ export class VideoProcessor {
         thumbnailUrl,
         duration: metadata.duration,
         width: metadata.width,
-        height: metadata.height
+        height: metadata.height,
+        timestamp: new Date().toISOString(),
+        title: metadata.title,
+        description: metadata.description
       });
 
     } catch (error) {
@@ -266,6 +274,7 @@ export class VideoProcessor {
       videoStore.set(videoId, {
         status: 'error',
         error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
       });
       throw error;
     } finally {
