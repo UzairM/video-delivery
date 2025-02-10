@@ -75,13 +75,15 @@ export class VideoProcessor {
   private generateMasterPlaylist(variants: TranscodeOptions[]): string {
     let playlist = '#EXTM3U\n';
     playlist += '#EXT-X-VERSION:7\n';
-    playlist += '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.1,CAN-SKIP-UNTIL=12.0\n';
+    playlist += '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.1,CAN-SKIP-UNTIL=12.0,HOLD-BACK=3.0\n';
     playlist += '#EXT-X-INDEPENDENT-SEGMENTS\n\n';
+    playlist += '#EXT-X-CONTENT-STEERING:SERVER-URI="steering.json"\n';
+    playlist += '#EXT-X-START:TIME-OFFSET=0,PRECISE=YES\n';
 
     variants.forEach(variant => {
       const [width, height] = variant.resolution.split('x');
       const bandwidthBits = parseInt(variant.bitrate) * 1000;
-      playlist += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthBits},RESOLUTION=${variant.resolution},CODECS="avc1.4d4029,mp4a.40.2"\n`;
+      playlist += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthBits},RESOLUTION=${variant.resolution},CODECS="avc1.4d4029,mp4a.40.2",FRAME-RATE=30,SCORE=1.0\n`;
       playlist += `${variant.resolution.split('x')[1]}p/playlist.m3u8\n`;
     });
 
@@ -89,6 +91,22 @@ export class VideoProcessor {
   }
 
   private async transcodeVariant(inputPath: string, options: TranscodeOptions): Promise<void> {
+    // Add variant playlist headers
+    const variantPlaylistHeaders = [
+      '#EXT-X-PLAYLIST-TYPE:EVENT',
+      '#EXT-X-TARGETDURATION:1',
+      '#EXT-X-VERSION:7',
+      '#EXT-X-MEDIA-SEQUENCE:0',
+      '#EXT-X-DISCONTINUITY-SEQUENCE:0',
+      '#EXT-X-INDEPENDENT-SEGMENTS',
+      '#EXT-X-MAP:URI="init.mp4"'
+    ].join('\n') + '\n';
+
+    await fs.promises.writeFile(
+      path.join(options.outputPath, 'playlist_header.m3u8'),
+      variantPlaylistHeaders
+    );
+
     return new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .on('start', (commandLine) => {
@@ -120,7 +138,16 @@ export class VideoProcessor {
           '-preset ultrafast',
           '-movflags frag_keyframe+empty_moov+default_base_moof',
           '-write_prft 1',
-          '-video_track_timescale 90000'
+          '-video_track_timescale 90000',
+          '-force_key_frames expr:gte(t,n_forced*1)',
+          '-refs 1',
+          '-x264opts no-mbtree',
+          '-profile:v baseline',
+          '-level:v 3.0',
+          '-copyts',
+          '-vsync 0',
+          '-start_number 0',
+          '-avoid_negative_ts disabled'
         ])
         .output(path.join(options.outputPath, 'playlist.m3u8'))
         .on('end', () => resolve())
