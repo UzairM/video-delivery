@@ -17,8 +17,10 @@ A microservice for handling video uploads, processing, and streaming. This servi
 - In-memory video status tracking
 
 ## Prerequisites
-
-- Node.js 18+
+- Setup S3 bucket with cloudfront distribution: 
+  - https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/GettingStarted.SimpleDistribution.html
+  - get the cloudfront domain name and IAM Access Key ID and Secret Access Key
+  - Node.js 18+
 - FFmpeg installed on the system
 - AWS account with S3 and CloudFront set up
 - Docker and Docker Compose (optional)
