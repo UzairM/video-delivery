@@ -38,6 +38,20 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Debug route (remove in production)
+app.get('/debug/env', (_req, res) => {
+  res.json({
+    port: process.env.PORT,
+    apiDomain: process.env.API_DOMAIN,
+    awsRegion: process.env.AWS_REGION,
+    // Don't expose sensitive keys
+    hasAwsKey: !!process.env.AWS_ACCESS_KEY_ID,
+    hasAwsSecret: !!process.env.AWS_SECRET_ACCESS_KEY,
+    bucket: process.env.S3_BUCKET_NAME,
+    cloudfront: process.env.CLOUDFRONT_DOMAIN,
+  });
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`Video upload service listening on port ${port}`);

@@ -36,4 +36,5 @@ ENV PORT=3001
 
 EXPOSE 3001
 
-CMD ["node", "dist/index.js"] 
+# Print environment variables for debugging
+CMD ["sh", "-c", "env && node dist/index.js"] 
