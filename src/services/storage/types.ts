@@ -38,4 +38,9 @@ export interface StorageConfig {
   secretKey: string;
   useSSL: boolean;
   cloudFrontDomain: string;
+}
+
+interface UploadOptions {
+  cacheControl?: string;
+  contentType?: string;
 } 

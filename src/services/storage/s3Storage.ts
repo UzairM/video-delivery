@@ -33,7 +33,6 @@ export class S3StorageService implements StorageService {
       return {
         cacheControl: 'no-cache, no-store, must-revalidate',
         contentType: 'application/vnd.apple.mpegurl',
-        acl: 'public-read'
       };
     }
     
@@ -41,13 +40,11 @@ export class S3StorageService implements StorageService {
       return {
         cacheControl: 'public, max-age=31536000', // Cache segments for 1 year
         contentType: 'video/mp4',
-        acl: 'public-read'
       };
     }
 
     return {
       cacheControl: 'public, max-age=3600', // Default 1 hour cache
-      acl: 'public-read'
     };
   }
 
@@ -61,7 +58,6 @@ export class S3StorageService implements StorageService {
         Body: file.buffer,
         ContentType: options.contentType || file.mimetype,
         CacheControl: options.cacheControl,
-        ACL: options.acl,
         // Enable HTTP/2 PUSH hints
         Metadata: {
           'x-amz-mp-parts-count': key.endsWith('.m3u8') ? '1' : undefined,
