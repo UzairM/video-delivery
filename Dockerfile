@@ -14,9 +14,15 @@ RUN npm run build
 # Production stage
 FROM node:18-slim
 
-# Install FFmpeg and clean up
+# Install latest FFmpeg
 RUN apt-get update && \
-    apt-get install -y ffmpeg && \
+    apt-get install -y wget xz-utils && \
+    wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && \
+    tar xvf ffmpeg-release-amd64-static.tar.xz && \
+    mv ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ && \
+    mv ffmpeg-*-amd64-static/ffprobe /usr/local/bin/ && \
+    rm -rf ffmpeg-* && \
+    apt-get remove -y wget xz-utils && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
