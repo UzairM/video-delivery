@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Status Dashboard</title>
+    <style>
+        body { 
+            max-width: 1200px; 
+            margin: 2rem auto; 
+            font-family: system-ui;
+            padding: 0 1rem;
+        }
+        .nav {
+            margin-bottom: 2rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .video-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .video-card.pending { background: #fff9c4; }
+        .video-card.processing { background: #e3f2fd; }
+        .video-card.ready { background: #e8f5e9; }
+        .video-card.error { background: #ffebee; }
+        .thumbnail { 
+            width: 100%; 
+            height: 180px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .status-badge.pending { background: #ffd54f; }
+        .status-badge.processing { background: #90caf9; }
+        .status-badge.ready { background: #81c784; }
+        .status-badge.error { background: #ef5350; color: white; }
+        .meta {
+            font-size: 0.875rem;
+            color: #666;
+            margin: 0.5rem 0;
+        }
+        .refresh {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .refresh:hover {
+            background: #1976d2;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal.hidden {
+            display: none;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        #uploadStatus {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <h1>Video Status Dashboard</h1>
+        <button onclick="showUploadModal()">Upload New Video</button>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Upload Video</h2>
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label for="video">Select Video:</label>
+                    <input type="file" id="video" name="video" accept="video/*" required>
+                </div>
+                <div class="form-group">
+                    <label for="title">Title:</label>
+                    <input type="text" id="title" name="title">
+                </div>
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <textarea id="description" name="description"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">Upload</button>
+                    <button type="button" onclick="hideUploadModal()">Cancel</button>
+                </div>
+            </form>
+            <div id="uploadStatus" class="hidden">
+                <p id="statusText"></p>
+                <progress id="uploadProgress" max="100" value="0"></progress>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid" id="videos"></div>
+    <button class="refresh" onclick="loadVideos()" title="Refresh">↻</button>
+
+    <script>
+        const API_URL = 'http://localhost:3001/api';
+
+        function showUploadModal() {
+            document.getElementById('uploadModal').classList.remove('hidden');
+            document.getElementById('uploadStatus').classList.add('hidden');
+            document.getElementById('uploadForm').reset();
+        }
+
+        function hideUploadModal() {
+            document.getElementById('uploadModal').classList.add('hidden');
+        }
+
+        function setStatus(message, isError = false) {
+            const status = document.getElementById('uploadStatus');
+            const statusText = document.getElementById('statusText');
+            status.classList.remove('hidden');
+            statusText.textContent = message;
+            statusText.className = isError ? 'error' : 'success';
+        }
+
+        // Upload form handler
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('video', document.getElementById('video').files[0]);
+            formData.append('title', document.getElementById('title').value);
+            formData.append('description', document.getElementById('description').value);
+
+            try {
+                setStatus('Uploading...');
+
+                const response = await fetch(`${API_URL}/videos/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message);
+
+                setStatus('Upload complete! Processing video...');
+                setTimeout(hideUploadModal, 2000);
+                loadVideos();
+            } catch (error) {
+                setStatus(`Error: ${error.message}`, true);
+            }
+        });
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
+        }
+
+        function formatDuration(seconds) {
+            if (!seconds) return 'Unknown';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatResolution(width, height) {
+            if (!width || !height) return 'Unknown';
+            return `${width}x${height}`;
+        }
+
+        async function loadVideos() {
+            try {
+                const response = await fetch(`${API_URL}/videos/list`);
+                const data = await response.json();
+                const container = document.getElementById('videos');
+                container.innerHTML = '';
+
+                // Helper to create video cards
+                function createVideoCard(video, status) {
+                    const card = document.createElement('div');
+                    card.className = `video-card ${status}`;
+                    
+                    const content = `
+                        <div class="status">
+                            <span class="status-badge ${status}">${status.toUpperCase()}</span>
+                        </div>
+                        ${video.thumbnailUrl ? 
+                            `<img class="thumbnail" src="${video.thumbnailUrl}" alt="Thumbnail">` : 
+                            '<div class="thumbnail" style="background:#eee;"></div>'
+                        }
+                        <h3>${video.title || 'Untitled'}</h3>
+                        <div class="meta">
+                            <div>Uploaded: ${formatDate(video.timestamp)}</div>
+                            ${video.duration ? `<div>Duration: ${formatDuration(video.duration)}</div>` : ''}
+                            ${video.width ? `<div>Resolution: ${formatResolution(video.width, video.height)}</div>` : ''}
+                        </div>
+                        ${video.description ? `<p>${video.description}</p>` : ''}
+                        ${video.error ? `<div class="error">Error: ${video.error}</div>` : ''}
+                        ${video.url ? `<div><a href="${video.url}" target="_blank">View Video</a></div>` : ''}
+                    `;
+                    
+                    card.innerHTML = content;
+                    return card;
+                }
+
+                // Add all videos grouped by status
+                ['ready', 'processing', 'pending', 'error'].forEach(status => {
+                    if (data.videos[status]) {
+                        data.videos[status].forEach(video => {
+                            container.appendChild(createVideoCard(video, status));
+                        });
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error loading videos:', error);
+            }
+        }
+
+        // Initial load
+        loadVideos();
+
+        // Auto refresh every 5 seconds
+        setInterval(loadVideos, 5000);
+    </script>
+</body>
+</html> 

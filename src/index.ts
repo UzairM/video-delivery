@@ -13,6 +13,14 @@ app.use(express.json());
 // Routes
 app.use('/api/videos', videosRouter);
 
+// Serve static files
+app.use(express.static('public'));
+
+// Serve videos.html as the main page
+app.get('/', (_req, res) => {
+  res.redirect('/videos.html');
+});
+
 // Health check
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });

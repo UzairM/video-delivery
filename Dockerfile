@@ -1,27 +1,39 @@
+# Build stage
+FROM node:18-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy source and build
+COPY . .
+RUN npm run build
+
+# Production stage
 FROM node:18-slim
 
-# Install FFmpeg
+# Install FFmpeg and clean up
 RUN apt-get update && \
     apt-get install -y ffmpeg && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy package files
+# Copy production dependencies
 COPY package*.json ./
+RUN npm ci --only=production
 
-# Install dependencies
-RUN npm ci
+# Copy built files
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
 
-# Copy source code
-COPY . .
+# Environment
+ENV NODE_ENV=production
+ENV PORT=3001
 
-# Build TypeScript
-RUN npm run build
-
-# Expose port
 EXPOSE 3001
 
-# Start the service
-CMD ["npm", "start"] 
+CMD ["node", "dist/index.js"] 
