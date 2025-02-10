@@ -73,13 +73,13 @@ export class VideoProcessor {
   private generateMasterPlaylist(variants: TranscodeOptions[]): string {
     let playlist = '#EXTM3U\n';
     playlist += '#EXT-X-VERSION:7\n';
-    playlist += '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.6\n';
+    playlist += '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.1\n';
     playlist += '#EXT-X-INDEPENDENT-SEGMENTS\n\n';
 
     variants.forEach(variant => {
       const [width, height] = variant.resolution.split('x');
       const bandwidthBits = parseInt(variant.bitrate) * 1000;
-      playlist += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthBits},RESOLUTION=${variant.resolution},CODECS="avc1.640029,mp4a.40.2"\n`;
+      playlist += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthBits},RESOLUTION=${variant.resolution},CODECS="avc1.4d4029,mp4a.40.2"\n`;
       playlist += `${variant.resolution.split('x')[1]}p/playlist.m3u8\n`;
     });
 
@@ -100,17 +100,17 @@ export class VideoProcessor {
           '-b:a 128k',
           '-ac 2',
           '-f hls',
-          '-hls_time 2',
-          '-hls_list_size 0',
+          '-hls_time 1',
+          '-hls_list_size 5',
+          '-hls_flags independent_segments+program_date_time+low_latency',
           '-hls_segment_type fmp4',
-          '-hls_flags low_latency',
-          '-hls_part_time 0.3',
-          '-hls_delete_threshold 1',
-          '-method PUT',
-          '-http_persistent 1',
+          '-hls_fmp4_init_filename init.mp4',
           '-hls_segment_filename', path.join(options.outputPath, 'segment%d.fmp4'),
-          '-hls_fmp4_init_filename', 'init.mp4',
-          '-hls_playlist_type event'
+          '-strict experimental',
+          '-tune zerolatency',
+          '-g 30',
+          '-sc_threshold 0',
+          '-preset ultrafast'
         ])
         .output(path.join(options.outputPath, 'playlist.m3u8'))
         .on('end', () => resolve())

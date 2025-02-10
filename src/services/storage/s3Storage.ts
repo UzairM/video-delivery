@@ -31,20 +31,20 @@ export class S3StorageService implements StorageService {
   private getUploadOptions(key: string): UploadOptions {
     if (key.endsWith('.m3u8')) {
       return {
-        cacheControl: 'no-cache, no-store, must-revalidate',
+        cacheControl: 'max-age=1, stale-while-revalidate=2',
         contentType: 'application/vnd.apple.mpegurl',
       };
     }
     
     if (key.endsWith('.fmp4') || key.endsWith('init.mp4')) {
       return {
-        cacheControl: 'public, max-age=31536000', // Cache segments for 1 year
+        cacheControl: 'max-age=31536000, immutable',
         contentType: 'video/mp4',
       };
     }
 
     return {
-      cacheControl: 'public, max-age=3600', // Default 1 hour cache
+      cacheControl: 'public, max-age=31536000',
     };
   }
 

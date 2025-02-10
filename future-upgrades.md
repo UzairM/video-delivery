@@ -68,3 +68,36 @@ Improve: Parallel processing
 - More bandwidth usage
 - Increased storage operations
 - Potential for more buffering on poor connections 
+
+## CloudFront LL-HLS Optimizations
+
+Configure CloudFront distribution with:
+
+```text
+- Origin Shield: Enabled (closest region)
+- Origin Protocol Policy: HTTPS Only
+- HTTP/3: Enabled
+- Origin Response Timeout: 4 seconds
+- Origin Keep-alive Timeout: 5 seconds
+- Cache Based on Selected Request Headers: Include 'Origin'
+- Query String Forwarding: None
+- Compress Objects Automatically: Yes
+- Viewer Protocol Policy: Redirect HTTP to HTTPS
+- Cache Policy:
+  - Min TTL: 0
+  - Max TTL: 31536000
+  - Default TTL: 86400
+  - Enable stale-while-revalidate
+  - Enable compression
+- Origin Request Policy:
+  - Headers: Include 'Origin'
+  - Query Strings: None
+  - Cookies: None
+```
+
+These settings optimize for:
+1. Low latency delivery
+2. Better cache hit ratios
+3. HTTP/3 (QUIC) support
+4. Proper CORS handling
+5. Automatic compression 
