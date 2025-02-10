@@ -32,7 +32,8 @@ COPY --from=builder /app/public ./public
 
 # Environment
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=3000
+ENV API_DOMAIN=http://vp.bydallas:3000
 
 EXPOSE 3001
 
