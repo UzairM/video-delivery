@@ -7,6 +7,11 @@ interface UploadOptions {
   cacheControl?: string;
   contentType?: string;
   acl?: string;
+  corsHeaders?: {
+    'Access-Control-Allow-Origin': string;
+    'Access-Control-Allow-Methods': string;
+    'Access-Control-Allow-Headers': string;
+  };
 }
 
 export class S3StorageService implements StorageService {
@@ -33,6 +38,11 @@ export class S3StorageService implements StorageService {
       return {
         cacheControl: 'max-age=1, stale-while-revalidate=2',
         contentType: 'application/vnd.apple.mpegurl',
+        corsHeaders: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD',
+          'Access-Control-Allow-Headers': '*'
+        }
       };
     }
     
@@ -40,6 +50,11 @@ export class S3StorageService implements StorageService {
       return {
         cacheControl: 'max-age=31536000, immutable',
         contentType: 'video/mp4',
+        corsHeaders: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD',
+          'Access-Control-Allow-Headers': '*'
+        }
       };
     }
 
@@ -58,6 +73,11 @@ export class S3StorageService implements StorageService {
         Body: file.buffer,
         ContentType: options.contentType || file.mimetype,
         CacheControl: options.cacheControl,
+        ...options.corsHeaders && {
+          Metadata: {
+            ...options.corsHeaders
+          }
+        },
         // Enable HTTP/2 PUSH hints
         Metadata: {
           'x-amz-mp-parts-count': key.endsWith('.m3u8') ? '1' : undefined,

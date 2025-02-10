@@ -91,8 +91,15 @@ Configure CloudFront distribution with:
   - Enable compression
 - Origin Request Policy:
   - Headers: Include 'Origin'
+  - Headers: Include 'Origin', 'Access-Control-Request-Method', 'Access-Control-Request-Headers'
   - Query Strings: None
   - Cookies: None
+- Response Headers Policy:
+  - CORS-With-Preflight
+  - Access-Control-Allow-Origin: *
+  - Access-Control-Allow-Methods: GET, HEAD
+  - Access-Control-Allow-Headers: *
+  - Access-Control-Max-Age: 86400
 ```
 
 These settings optimize for:
