@@ -151,7 +151,9 @@
     <button class="refresh" onclick="loadVideos()" title="Refresh">↻</button>
 
     <script>
-        const API_URL = 'http://localhost:3001/api';
+        // Fetch API domain from meta tag
+        const API_DOMAIN = document.querySelector('meta[name="api-domain"]').content;
+        const API_URL = `${API_DOMAIN}/api`;
 
         function showUploadModal() {
             document.getElementById('uploadModal').classList.remove('hidden');

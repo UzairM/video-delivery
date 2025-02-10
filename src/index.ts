@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import videosRouter from './routes/videos';
+import { readFileSync } from 'fs';
+import path from 'path';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -14,6 +16,16 @@ app.use(express.json());
 app.use('/api/videos', videosRouter);
 
 // Serve static files
+app.get('/*.html', (req, res) => {
+  const filePath = path.join(__dirname, '../public', req.path);
+  let html = readFileSync(filePath, 'utf-8');
+  html = html.replace(
+    '</head>',
+    `<meta name="api-domain" content="${process.env.API_DOMAIN}"></head>`
+  );
+  res.send(html);
+});
+
 app.use(express.static('public'));
 
 // Serve videos.html as the main page
