@@ -150,7 +150,6 @@ export class VideoProcessor {
           '-avoid_negative_ts make_zero',
           '-start_at_zero',
           '-fflags +genpts',
-          '-enc_timebase demux',
         ])
         .output(path.join(options.outputPath, 'playlist.m3u8'))
         .on('end', () => resolve())
