@@ -116,7 +116,7 @@ export class VideoProcessor {
           console.log('FFmpeg stderr:', stderrLine);
         })
         .outputOptions([
-          `-vf scale=${options.resolution}:force_original_aspect_ratio=decrease,pad=${options.resolution}:color=black`,
+          `-vf scale=w=${options.resolution.split('x')[0]}:h=${options.resolution.split('x')[1]}:force_original_aspect_ratio=decrease,pad=w=${options.resolution.split('x')[0]}:h=${options.resolution.split('x')[1]}:x=(ow-iw)/2:y=(oh-ih)/2:color=black`,
           '-c:v libx264',
           `-b:v ${options.bitrate}`,
           `-maxrate ${options.maxrate}`,
@@ -145,12 +145,12 @@ export class VideoProcessor {
           '-profile:v baseline',
           '-level:v 3.0',
           '-copyts',
-          '-vsync 0',
+          '-fps_mode cfr',
           '-start_number 0',
           '-avoid_negative_ts make_zero',
           '-start_at_zero',
           '-fflags +genpts',
-          '-enc_time_base -1',
+          '-enc_timebase demux',
         ])
         .output(path.join(options.outputPath, 'playlist.m3u8'))
         .on('end', () => resolve())
