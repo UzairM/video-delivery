@@ -116,40 +116,37 @@ export class VideoProcessor {
           console.log('FFmpeg stderr:', stderrLine);
         })
         .outputOptions([
+          // Scale and maintain aspect ratio
           `-vf scale=w=${options.resolution.split('x')[0]}:h=${options.resolution.split('x')[1]}:force_original_aspect_ratio=decrease,pad=w=${options.resolution.split('x')[0]}:h=${options.resolution.split('x')[1]}:x=(ow-iw)/2:y=(oh-ih)/2:color=black`,
+          
+          // Video codec settings
           '-c:v libx264',
           `-b:v ${options.bitrate}`,
           `-maxrate ${options.maxrate}`,
           `-bufsize ${options.bufsize}`,
-          `-profile:v ${options.profile}`,
+          
+          // Audio settings
           '-c:a aac',
           '-b:a 128k',
           '-ac 2',
+          
+          // HLS settings
           '-f hls',
-          '-hls_time 1',
-          '-hls_list_size 5',
-          '-hls_flags independent_segments+program_date_time',
+          '-hls_time 2',              // 2-second segments
+          '-hls_list_size 0',         // Keep all segments (was 5)
           '-hls_segment_type fmp4',
           '-hls_fmp4_init_filename init.mp4',
           '-hls_segment_filename', path.join(options.outputPath, 'segment%d.fmp4'),
-          '-tune zerolatency',
-          '-g 30',
-          '-sc_threshold 0',
+          
+          // Encoding settings
           '-preset ultrafast',
-          '-movflags frag_keyframe+empty_moov+default_base_moof',
-          '-write_prft 1',
-          '-video_track_timescale 90000',
-          '-force_key_frames expr:gte(t,n_forced*1)',
-          '-refs 1',
-          '-x264opts no-mbtree',
-          '-profile:v baseline',
-          '-level:v 3.0',
+          '-g 48',                    // Keyframe every 2 seconds at 24fps
+          '-sc_threshold 0',          // Disable scene detection
+          '-profile:v baseline',      // Maximum compatibility
+          
+          // Timestamp handling
           '-copyts',
-          '-fps_mode cfr',
-          '-start_number 0',
-          '-avoid_negative_ts make_zero',
-          '-start_at_zero',
-          '-fflags +genpts',
+          '-start_at_zero'
         ])
         .output(path.join(options.outputPath, 'playlist.m3u8'))
         .on('end', () => resolve())
