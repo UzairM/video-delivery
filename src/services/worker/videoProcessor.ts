@@ -133,16 +133,22 @@ export class VideoProcessor {
           // HLS settings
           '-f hls',
           '-hls_time 2',              // 2-second segments
-          '-hls_list_size 0',         // Keep all segments (was 5)
+          '-hls_list_size 0',         // Keep all segments
           '-hls_segment_type fmp4',
           '-hls_fmp4_init_filename init.mp4',
+          '-hls_flags independent_segments+program_date_time',  // Added back for low latency
           '-hls_segment_filename', path.join(options.outputPath, 'segment%d.fmp4'),
           
-          // Encoding settings
-          '-preset ultrafast',
-          '-g 48',                    // Keyframe every 2 seconds at 24fps
+          // Encoding settings for lower latency
+          '-preset veryfast',         // Changed from ultrafast for better quality/latency balance
+          '-tune zerolatency',        // Added back for reduced latency
+          '-g 48',                    // Keyframe every 2 seconds
           '-sc_threshold 0',          // Disable scene detection
           '-profile:v baseline',      // Maximum compatibility
+          
+          // Reduced reference frames for lower latency
+          '-refs 3',                  // Small number of reference frames
+          '-x264opts no-mbtree',      // Disable motion prediction tree for lower latency
           
           // Timestamp handling
           '-copyts',
