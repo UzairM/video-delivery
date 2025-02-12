@@ -174,20 +174,28 @@
                     setInterval(() => {
                         if (!hls) return;
                         const stats = {
-                            buffered: video.buffered.length ? video.buffered.end(0) - video.currentTime : 0,
-                            latency: hls.latency || 0,
-                            dropped: hls.droppedFrames || 0,
-                            bitrate: (hls.bandwidthEstimate / 1000).toFixed(0),
-                            level: hls.currentLevel,
+                            // Playback info
                             currentTime: video.currentTime.toFixed(2),
-                            playbackRate: video.playbackRate,
+                            duration: video.duration.toFixed(2),
+                            
+                            // Buffer info
+                            bufferAhead: video.buffered.length ? 
+                                (video.buffered.end(0) - video.currentTime).toFixed(2) + 's' : '0s',
+                            bufferBehind: video.buffered.length ? 
+                                (video.currentTime - video.buffered.start(0)).toFixed(2) + 's' : '0s',
+                            
+                            // Performance
                             bandwidth: (hls.bandwidthEstimate / 1000000).toFixed(2) + ' Mbps',
-                            bufferedDuration: video.buffered.length ? 
-                              video.buffered.end(video.buffered.length - 1) - video.currentTime : 0,
-                            droppedFrames: hls.droppedFrames,
-                            totalFrames: hls.totalFrames,
-                            frameDrop: hls.totalFrames ? 
-                              ((hls.droppedFrames / hls.totalFrames) * 100).toFixed(2) + '%' : '0%'
+                            droppedFrames: hls.droppedFrames || 0,
+                            totalFrames: hls.totalFrames || 0,
+                            frameDropRatio: hls.totalFrames ? 
+                                ((hls.droppedFrames / hls.totalFrames) * 100).toFixed(2) + '%' : '0%',
+                            
+                            // Quality
+                            currentLevel: hls.currentLevel >= 0 ? 
+                                `${hls.levels[hls.currentLevel]?.height || 0}p` : 'auto',
+                            currentBitrate: hls.currentLevel >= 0 ?
+                                ((hls.levels[hls.currentLevel]?.bitrate || 0) / 1000).toFixed(0) + ' kbps' : 'auto'
                         };
                         statsDiv.textContent = JSON.stringify(stats, null, 2);
                     }, 1000);
